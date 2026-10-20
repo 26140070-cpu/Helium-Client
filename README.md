@@ -37,8 +37,8 @@ The module list includes Fly, Blink, NoFall, KillAura, AutoEat, AutoTotem, Surro
 | Area | Status |
 | --- | --- |
 | Windows | Injector and client build supported; injector must run as Administrator. |
-| Linux | Injector and client build supported; injection requires root/ptrace permission. |
-| macOS | x86_64 only (Intel or x86_64 JVM under Rosetta). Uses HotSpot `jcmd` dynamic attach and hooks GLFW's buffer swap. Not yet tested on a macOS host. |
+| Linux | Injector and client build supported; injection requires root/ptrace permission. A downloadable AppImage is provided. |
+| macOS | x86_64 only (Intel or x86_64 JVM under Rosetta). Uses HotSpot `jcmd` dynamic attach and hooks GLFW's buffer swap. Distributed as a zipped `.app` bundle; not yet tested on a macOS host. |
 | Minecraft 26.1+ | Runtime reflection mapping; JDK 25 is required by Minecraft 26.1. The README's latest tested version is 26.1.2. |
 | Obfuscated Minecraft | Uses bundled Mojang mappings for 1.21.11. For other versions, regenerate mappings with `conversion.py`; older versions are not individually verified. |
 | Fabric / Forge / NeoForge | Supported with unobfuscated Minecraft builds (26.1+). Obfuscated mod-loader mappings such as intermediary/SRG are not supported. |
@@ -119,6 +119,17 @@ cargo clippy --workspace
 ```
 
 T2 integration tests start an in-process JVM and require a JDK. The end-to-end harness (`cargo xtask e2e`) needs Minecraft running and the platform's injection permissions.
+
+## Downloading release builds
+
+Open [Releases](https://github.com/26140070-cpu/Helium-Client/releases/latest) and download the package for your system:
+
+- **Windows:** download `injector.exe`, `agent_loader.dll`, and `client.dll` into the same folder.
+- **Linux:** download `HeliumClient-x86_64.AppImage`, make it executable in the file manager's permissions, and launch it. If needed, `chmod +x HeliumClient-x86_64.AppImage` grants execute permission. If your system lacks AppImage/FUSE support, launch it with `--appimage-extract-and-run`. Minecraft process access may require elevated permissions. The raw `injector`, `libagent_loader.so`, and `libclient.so` files are also available.
+- **macOS Intel / Rosetta:** download and unzip `HeliumClient-macOS-x86_64.zip`, then move `HeliumClient.app` into Applications. It requires an x86_64 Minecraft JVM; Apple Silicon-native ARM64 JVMs are not supported yet.
+
+The macOS app is not notarized, so Gatekeeper may show a first-launch security warning. If that happens, use Finder's **Open** action from the app's context menu and confirm the prompt. The Linux AppImage requires a compatible x86_64 Linux system.
+These packages are attached to releases built with the updated release workflow; older releases do not include the AppImage or macOS app bundle.
 
 ## Run
 

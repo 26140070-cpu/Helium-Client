@@ -1,4 +1,4 @@
-name: Build Rust Project (Linux & Windows)
+name: Build and Package HeliumClient
 
 on:
   push:
@@ -55,16 +55,114 @@ jobs:
             cp target/release/client.dll artifacts/${{ matrix.os}}/
           fi
 
+      - name: Build Linux AppImage
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp target/release/injector AppDir/usr/bin/
+          cp target/release/libagent_loader.so target/release/libclient.so AppDir/usr/bin/
+
+          curl -fsSL \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+            -o linuxdeploy
+          chmod +x linuxdeploy
+          LDAI_OUTPUT="$GITHUB_WORKSPACE/artifacts/ubuntu-latest/HeliumClient-x86_64.AppImage" \
+            APPIMAGE_EXTRACT_AND_RUN=1 ./linuxdeploy \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/injector \
+            --exclude-library=libjvm.so \
+            --desktop-file packaging/heliumclient.desktop \
+            --icon-file injector/assets/helium-logo.png \
+            --output appimage
+
       - name: Upload artifacts (always)
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.os }}
           path: artifacts/${{ matrix.os }}
 
-      - name: Upload assets to GitHub Release (only on tags v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+  build-macos:
+    runs-on: macos-15-intel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Cache Rust dependencies and build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: macos-x86_64
+
+      - name: Build macOS libraries and injector
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Package macOS app bundle
+        shell: bash
+        run: |
+          APP="artifacts/macos/HeliumClient.app"
+          mkdir -p "$APP/Contents/MacOS"
+          cp target/x86_64-apple-darwin/release/injector "$APP/Contents/MacOS/"
+          cp target/x86_64-apple-darwin/release/libagent_loader.dylib "$APP/Contents/MacOS/"
+          cp target/x86_64-apple-darwin/release/libclient.dylib "$APP/Contents/MacOS/"
+
+          cat > "$APP/Contents/Info.plist" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>HeliumClient</string>
+            <key>CFBundleDisplayName</key>
+            <string>HeliumClient Injector</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.heliumclient.injector</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0.0</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleExecutable</key>
+            <string>injector</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>10.15</string>
+          </dict>
+          </plist>
+          EOF
+
+          codesign --force --deep --sign - "$APP"
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$APP" \
+            artifacts/macos/HeliumClient-macOS-x86_64.zip
+
+      - name: Upload macOS app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-macos-15-intel
+          path: artifacts/macos/HeliumClient-macOS-x86_64.zip
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download platform packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish all packages to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/${{ matrix.os }}/*
+          files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

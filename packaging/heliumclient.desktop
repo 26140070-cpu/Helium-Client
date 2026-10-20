@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=HeliumClient Injector
+Comment=Load HeliumClient into Minecraft Java Edition
+Exec=injector
+Icon=helium-logo
+Categories=Game;
+Terminal=false
