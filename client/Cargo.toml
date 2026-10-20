@@ -1,0 +1,41 @@
+[package]
+name = "client"
+version.workspace = true
+edition.workspace = true
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+egui.workspace = true
+log.workspace = true
+simplelog.workspace = true
+jni.workspace = true
+serde.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+dashmap.workspace = true
+libc.workspace = true
+egui_glow = "0.29.0"
+glow = "0.14.0"
+serde_json = "1.0.135"
+ureq = { version = "2.12", default-features = false, features = ["tls"] }
+libloading = "0.9.0"
+image = { version = "0.25.2", default-features = false, features = ["png"] }
+# Only the x64 hooker is used; the x86 module is dropped — it would otherwise
+# emit `extern "cdecl"` ABI warnings on this target.
+ilhook = { version = "2.3.0", default-features = false, features = ["x64"] }
+lazy_static = "1.4.0"
+mapping_derive = { path = "../mapping_derive" }
+
+[dev-dependencies]
+# The `invocation` feature provides `JavaVM::new`, used by the in-process
+# JVM integration tests (client/src/mapping/jvm_test.rs).
+jni = { workspace = true, features = ["invocation"] }
+
+[build-dependencies]
+gl_generator = "0.14"
+
+[target.'cfg(target_os = "linux")'.build-dependencies]
+java-locator = "0.1"
